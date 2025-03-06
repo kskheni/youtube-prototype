@@ -22,3 +22,44 @@ const s3 = new S3Client({
 
 const generateFileName = (bytes = 32) =>
   crypto.randomBytes(bytes).toString("hex");
+
+const upload = async (req, res, next) => {
+  try {
+    const file = req.file;
+    const title = req.body.title;
+    const description = req.body.description;
+    const fileName = generateFileName();
+    const params = {
+      Bucket: bucketName,
+      Key: fileName,
+      ContentType: file.mimetype,
+      Body: file.buffer,
+    };
+    const command = new PutObjectCommand(params);
+    const responseUpload = await s3.send(command);
+
+    res.status(200).send({ message: responseUpload });
+  } catch (e) {
+    console.log(e.message);
+    res.sendStatus(500);
+  }
+};
+
+const getFile = async (req, res) => {
+  try {
+    console.log(req.params);
+    const url = await getSignedUrl(
+      s3,
+      new GetObjectCommand({ Bucket: bucketName, Key: req.params.filename }),
+      { expiresIn: 3600 }
+    );
+    res.send({ url: url });
+  } catch (error) {
+    console.log(error.message);
+    res.sendStatus(500);
+  }
+};
+module.exports = {
+  upload,
+  getFile,
+};
